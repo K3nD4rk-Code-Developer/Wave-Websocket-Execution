@@ -58,17 +58,6 @@ All output from connected clients appears in the "Lua WebSocket Server" output c
 
 Access the output panel via: **View** → **Output** → **Lua WebSocket Server**
 
-## Configuration
-
-### Server Port
-
-The default server port is `61416`. To modify:
-
-Open `extension.js` and change:
-```javascript
-this.ServerPort = 61416;
-```
-
 ## Architecture
 
 ### WebSocketManager
