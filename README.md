@@ -58,6 +58,10 @@ All output from connected clients appears in the "Lua WebSocket Server" output c
 
 Access the output panel via: **View** → **Output** → **Lua WebSocket Server**
 
+## Configuration
+
+The server runs on a fixed port `61416` and cannot be changed.
+
 ## Architecture
 
 ### WebSocketManager
@@ -79,6 +83,7 @@ Clients send identification data on connection:
   "op": "client/identify",
   "data": {
     "player": { "id": "...", "name": "..." },
+    "process": { "id": "...", "name": "..." },
     "game": { "name": "..." }
   }
 }
