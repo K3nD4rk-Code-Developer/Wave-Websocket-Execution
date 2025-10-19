@@ -1,0 +1,110 @@
+{
+  "name": "wave-websocket-client",
+  "displayName": "Wave WebSocket Client",
+  "description": "Execute Lua scripts via WebSocket connection with automatic reconnection",
+  "version": "1.0.0",
+  "publisher": "Wave-Hub-Development-Team",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/K3nD4rk-Code-Developer/Wave-Websocket-Execution.git"
+  },
+  "engines": {
+    "vscode": "^1.103.0"
+  },
+  "categories": [
+    "Other",
+    "Debuggers"
+  ],
+  "keywords": [
+    "lua",
+    "websocket",
+    "remote execution",
+    "scripting"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "luaWebSocket.executeScript",
+        "title": "Execute Script",
+        "category": "Lua WebSocket",
+        "icon": "$(play)"
+      },
+      {
+        "command": "luaWebSocket.connect",
+        "title": "Connect",
+        "category": "Lua WebSocket",
+        "icon": "$(plug)"
+      },
+      {
+        "command": "luaWebSocket.disconnect",
+        "title": "Disconnect",
+        "category": "Lua WebSocket",
+        "icon": "$(debug-disconnect)"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "luaWebSocket.executeScript",
+        "key": "ctrl+shift+e"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "luaWebSocket.executeScript"
+        },
+        {
+          "command": "luaWebSocket.connect"
+        },
+        {
+          "command": "luaWebSocket.disconnect"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "luaWebSocket.executeScript",
+          "when": "resourceExtname == .lua",
+          "group": "navigation@1"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "luaWebSocket.executeScript",
+          "when": "resourceExtname == .lua",
+          "group": "luaWebSocket@1"
+        }
+      ]
+    },
+    "configuration": {
+      "type": "object",
+      "title": "Wave Hub WBSocket Client",
+      "properties": {
+        "luaWebSocket.serverUrl": {
+          "type": "string",
+          "default": "ws://localhost:61416/",
+          "description": "WebSocket server URL"
+        },
+        "luaWebSocket.autoConnect": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically connect on extension startup"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "echo \"No compile step needed for JavaScript\"",
+    "test": "node ./test/runTest.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.6.0"
+  }
+}
