@@ -24,7 +24,7 @@ class WebSocketManager {
     constructor() {
         this.WebSocketServer = null;
         this.ConnectionState = "Waiting";
-        this.ServerPort = 61416;
+        this.ServerPort = 61417;
         this.StatusBarItem = null;
         this.ExecuteButton = null;
         this.OutputChannel = null;

@@ -32,7 +32,7 @@ This extension provides a seamless development workflow for Roblox scripting by 
 
 ### Starting the Server
 
-The extension automatically starts the WebSocket server on port `61416` when activated. The status bar will show the connection state:
+The extension automatically starts the WebSocket server on port `61417` when activated. The status bar will show the connection state:
 - **$(watch) Lua Server: Waiting** - Server is ready but no clients connected
 - **$(plug) Lua Server: [N] Connected** - N clients are connected and ready
 
@@ -60,7 +60,7 @@ Access the output panel via: **View** → **Output** → **Lua WebSocket Server*
 
 ## Configuration
 
-The server runs on a fixed port `61416` and cannot be changed.
+The server runs on a fixed port `61417` and cannot be changed.
 
 ## Architecture
 
@@ -152,7 +152,7 @@ Use the VS Code debugger while the extension runs. Output appears in the Debug C
 
 To use this extension, clients (Roblox scripts) must:
 
-1. Connect to the WebSocket server at `ws://localhost:61416`
+1. Connect to the WebSocket server at `ws://localhost:61417`
 2. Send an identify packet on connection
 3. Listen for `client/onDidTextDocumentExecute` events
 4. Execute received script content
@@ -163,10 +163,10 @@ To use this extension, clients (Roblox scripts) must:
 ### "No Roblox clients connected"
 - Ensure your Roblox client has established a WebSocket connection
 - Check that the server is running (green status bar indicator)
-- Verify the port matches (default: 61416)
+- Verify the port matches (default: 61417)
 
 ### Server won't start
-- Check if port 61416 is already in use
+- Check if port 61417 is already in use
 - Try changing the port in `extension.js`
 - Check the Output panel for error messages
 
@@ -179,7 +179,7 @@ To use this extension, clients (Roblox scripts) must:
 ### Missing clients in output
 - Clients may have disconnected; check status bar
 - Check network connectivity between client and server
-- Verify firewall settings allow WebSocket communication on port 61416
+- Verify firewall settings allow WebSocket communication on port 61417
 
 ## License
 

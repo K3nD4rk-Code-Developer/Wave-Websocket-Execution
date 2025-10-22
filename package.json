@@ -85,7 +85,7 @@
       "properties": {
         "luaWebSocket.serverUrl": {
           "type": "string",
-          "default": "ws://localhost:61416/",
+          "default": "ws://localhost:61417/",
           "description": "WebSocket server URL"
         },
         "luaWebSocket.autoConnect": {
