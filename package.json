@@ -29,9 +29,21 @@
     "commands": [
       {
         "command": "luaWebSocket.executeScript",
-        "title": "Execute Script",
+        "title": "Execute Current Script",
         "category": "Lua WebSocket",
         "icon": "$(play)"
+      },
+      {
+        "command": "luaWebSocket.executeSpecificScript",
+        "title": "Execute Specific Script",
+        "category": "Lua WebSocket",
+        "icon": "$(file-code)"
+      },
+      {
+        "command": "luaWebSocket.openSettings",
+        "title": "Open Settings",
+        "category": "Lua WebSocket",
+        "icon": "$(settings-gear)"
       },
       {
         "command": "luaWebSocket.connect",
@@ -49,13 +61,26 @@
     "keybindings": [
       {
         "command": "luaWebSocket.executeScript",
-        "key": "ctrl+shift+e"
+        "key": "ctrl+shift+e",
+        "mac": "cmd+shift+e",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "luaWebSocket.executeSpecificScript",
+        "key": "ctrl+shift+l",
+        "mac": "cmd+shift+l"
       }
     ],
     "menus": {
       "commandPalette": [
         {
           "command": "luaWebSocket.executeScript"
+        },
+        {
+          "command": "luaWebSocket.executeSpecificScript"
+        },
+        {
+          "command": "luaWebSocket.openSettings"
         },
         {
           "command": "luaWebSocket.connect"
@@ -76,12 +101,16 @@
           "command": "luaWebSocket.executeScript",
           "when": "resourceExtname == .lua",
           "group": "luaWebSocket@1"
+        },
+        {
+          "command": "luaWebSocket.executeSpecificScript",
+          "group": "luaWebSocket@2"
         }
       ]
     },
     "configuration": {
       "type": "object",
-      "title": "Wave Hub WBSocket Client",
+      "title": "Wave Hub WebSocket Client",
       "properties": {
         "luaWebSocket.serverUrl": {
           "type": "string",
@@ -92,6 +121,17 @@
           "type": "boolean",
           "default": true,
           "description": "Automatically connect on extension startup"
+        },
+        "luaWebSocket.specificScriptPath": {
+          "type": "string",
+          "default": "",
+          "description": "Relative path to a specific script to execute (e.g., 'Script-Loader.lua' or 'scripts/loader.lua')",
+          "editPresentation": "multilineText"
+        },
+        "luaWebSocket.showExecutionNotifications": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show notification popup when scripts are sent to Roblox clients"
         }
       }
     }

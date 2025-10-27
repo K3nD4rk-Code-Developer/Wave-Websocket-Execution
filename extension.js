@@ -27,6 +27,7 @@ class WebSocketManager {
         this.ServerPort = 61417;
         this.StatusBarItem = null;
         this.ExecuteButton = null;
+        this.ExecuteSpecificButton = null;
         this.OutputChannel = null;
         this.ConnectedClients = 0;
         this.Clients = new Map();
@@ -226,6 +227,23 @@ class WebSocketManager {
             this.ExecuteButton.show();
             ctx.subscriptions.push(this.ExecuteButton);
         }
+
+        if (!this.ExecuteSpecificButton) {
+            const config = vscode.workspace.getConfiguration('luaWebSocket');
+            const specificScript = config.get('specificScriptPath', '');
+            
+            if (specificScript) {
+                this.ExecuteSpecificButton = vscode.window.createStatusBarItem(
+                    vscode.StatusBarAlignment.Right,
+                    99
+                );
+                this.ExecuteSpecificButton.text = "$(play) Execute Loader";
+                this.ExecuteSpecificButton.tooltip = `Execute ${specificScript}`;
+                this.ExecuteSpecificButton.command = "luaWebSocket.executeSpecificScript";
+                this.ExecuteSpecificButton.show();
+                ctx.subscriptions.push(this.ExecuteSpecificButton);
+            }
+        }
     }
 
     RemoveExecutionButtons() {
@@ -233,9 +251,13 @@ class WebSocketManager {
             this.ExecuteButton.dispose();
             this.ExecuteButton = null;
         }
+        if (this.ExecuteSpecificButton) {
+            this.ExecuteSpecificButton.dispose();
+            this.ExecuteSpecificButton = null;
+        }
     }
 
-    SendScript(ScriptContent) {
+    SendScript(ScriptContent, ScriptName = null) {
         if (!this.ConnectedClients) {
             vscode.window.showErrorMessage("No Roblox clients connected");
             return false;
@@ -274,6 +296,17 @@ class WebSocketManager {
 
         if (sent > 0) {
             this.LogMessage(`Script sent to ${sent} client(s) (${ScriptContent.length} chars).`, "CLIENT");
+            
+            // Show notification if enabled in settings
+            const config = vscode.workspace.getConfiguration('luaWebSocket');
+            const showNotifications = config.get('showExecutionNotifications', true);
+            
+            if (showNotifications) {
+                const scriptDisplayName = ScriptName || "Script";
+                const clientText = sent === 1 ? "Roblox Client" : "Roblox Client(s)";
+                vscode.window.showInformationMessage(`${scriptDisplayName} sent to ${clientText}.`);
+            }
+            
             if (failed > 0) vscode.window.showWarningMessage(`Failed to send to ${failed} client(s).`);
             return true;
         } else {
@@ -288,7 +321,19 @@ class WebSocketManager {
             () => this.ExecuteCurrentScript()
         );
 
+        const ExecuteSpecificScriptCommand = vscode.commands.registerCommand(
+            'luaWebSocket.executeSpecificScript',
+            () => this.ExecuteSpecificScript()
+        );
+
+        const OpenSettingsCommand = vscode.commands.registerCommand(
+            'luaWebSocket.openSettings',
+            () => this.OpenSettings()
+        );
+
         Context.subscriptions.push(ExecuteScriptCommand);
+        Context.subscriptions.push(ExecuteSpecificScriptCommand);
+        Context.subscriptions.push(OpenSettingsCommand);
     }
 
     ExecuteCurrentScript() {
@@ -306,7 +351,61 @@ class WebSocketManager {
             return;
         }
 
-        this.SendScript(ScriptContent);
+        this.SendScript(ScriptContent, "Script");
+    }
+
+    async ExecuteSpecificScript() {
+        const config = vscode.workspace.getConfiguration('luaWebSocket');
+        const specificScriptPath = config.get('specificScriptPath', '');
+
+        if (!specificScriptPath) {
+            vscode.window.showErrorMessage("No specific script path configured. Please set 'luaWebSocket.specificScriptPath' in settings.");
+            return;
+        }
+
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+        if (!workspaceFolders || workspaceFolders.length === 0) {
+            vscode.window.showErrorMessage("No workspace folder open");
+            return;
+        }
+
+        // Try to find the file in all workspace folders
+        let scriptContent = null;
+        let foundPath = null;
+
+        for (const folder of workspaceFolders) {
+            const fullPath = path.join(folder.uri.fsPath, specificScriptPath);
+            
+            if (fs.existsSync(fullPath)) {
+                try {
+                    scriptContent = fs.readFileSync(fullPath, 'utf8');
+                    foundPath = fullPath;
+                    break;
+                } catch (error) {
+                    this.LogMessage(`Failed to read ${fullPath}: ${error.message}`, 'ERROR');
+                }
+            }
+        }
+
+        if (!scriptContent) {
+            vscode.window.showErrorMessage(`Could not find or read script: ${specificScriptPath}`);
+            return;
+        }
+
+        if (scriptContent.trim().length === 0) {
+            vscode.window.showErrorMessage(`Script is empty: ${specificScriptPath}`);
+            return;
+        }
+
+        this.LogMessage(`Executing specific script: ${foundPath}`, 'INFO');
+        
+        // Extract just the filename for the notification
+        const fileName = path.basename(specificScriptPath, '.lua');
+        this.SendScript(scriptContent, fileName);
+    }
+
+    OpenSettings() {
+        vscode.commands.executeCommand('workbench.action.openSettings', 'luaWebSocket');
     }
 
     Dispose() {
