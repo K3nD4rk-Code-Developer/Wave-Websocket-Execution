@@ -40,6 +40,18 @@
         "icon": "$(file-code)"
       },
       {
+        "command": "luaWebSocket.selectClients",
+        "title": "Select Clients",
+        "category": "Lua WebSocket",
+        "icon": "$(checklist)"
+      },
+      {
+        "command": "luaWebSocket.toggleSelectionMode",
+        "title": "Toggle Selection Mode (All/Selected)",
+        "category": "Lua WebSocket",
+        "icon": "$(list-selection)"
+      },
+      {
         "command": "luaWebSocket.openSettings",
         "title": "Open Settings",
         "category": "Lua WebSocket",
@@ -58,19 +70,6 @@
         "icon": "$(debug-disconnect)"
       }
     ],
-    "keybindings": [
-      {
-        "command": "luaWebSocket.executeScript",
-        "key": "ctrl+shift+e",
-        "mac": "cmd+shift+e",
-        "when": "editorTextFocus"
-      },
-      {
-        "command": "luaWebSocket.executeSpecificScript",
-        "key": "ctrl+shift+l",
-        "mac": "cmd+shift+l"
-      }
-    ],
     "menus": {
       "commandPalette": [
         {
@@ -78,6 +77,12 @@
         },
         {
           "command": "luaWebSocket.executeSpecificScript"
+        },
+        {
+          "command": "luaWebSocket.selectClients"
+        },
+        {
+          "command": "luaWebSocket.toggleSelectionMode"
         },
         {
           "command": "luaWebSocket.openSettings"
@@ -105,6 +110,10 @@
         {
           "command": "luaWebSocket.executeSpecificScript",
           "group": "luaWebSocket@2"
+        },
+        {
+          "command": "luaWebSocket.selectClients",
+          "group": "luaWebSocket@3"
         }
       ]
     },

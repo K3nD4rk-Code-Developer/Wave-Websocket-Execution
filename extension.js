@@ -28,9 +28,12 @@ class WebSocketManager {
         this.StatusBarItem = null;
         this.ExecuteButton = null;
         this.ExecuteSpecificButton = null;
+        this.SelectClientsButton = null;
         this.OutputChannel = null;
         this.ConnectedClients = 0;
         this.Clients = new Map();
+        this.SelectedClients = new Set(); // Store selected client IDs
+        this.SelectionMode = 'all'; // 'all' or 'selected'
     }
 
     Initialize(Context) {
@@ -181,6 +184,9 @@ class WebSocketManager {
         var player = identity && identity.player && identity.player.id ? identity.player.name : "Unknown";
         var game = identity && identity.game && identity.game.name ? identity.game.name : "Unknown";
 
+        // Auto-select new clients by default
+        this.SelectedClients.add(uniqueId);
+
         this.LogMessage(`Connected ${uniqueId} -> Player: ${player}(${id}) Game: ${game}`, "CLIENT");
     }
 
@@ -196,6 +202,13 @@ class WebSocketManager {
         this.LogMessage(output.message, output.level);
     }
 
+    GetClientDisplayName(ws, identity) {
+        const player = identity && identity.player && identity.player.name ? identity.player.name : "Unknown";
+        const id = identity && identity.player && identity.player.id ? identity.player.id : "0";
+        const game = identity && identity.game && identity.game.name ? identity.game.name : "Unknown";
+        return `${player} (${id}) - ${game}`;
+    }
+
 
     HandleClientDisconnection(Client) {
         var identity = this.Clients.get(Client);
@@ -205,10 +218,13 @@ class WebSocketManager {
 
         this.LogMessage(`Disconnected ${Client._id} -> Player: ${player}(${id})`, "CLIENT");
         this.Clients.delete(Client);
+        this.SelectedClients.delete(Client._id); // Remove from selected clients
         this.ConnectedClients--;
         if (this.ConnectedClients === 0) {
             this.SetConnectionState("Waiting", false);
             this.RemoveExecutionButtons();
+            this.SelectedClients.clear();
+            this.SelectionMode = 'all';
         }
     }
 
@@ -216,10 +232,22 @@ class WebSocketManager {
         const ctx = this.Context;
         if (!ctx) return;
 
+        if (!this.SelectClientsButton) {
+            this.SelectClientsButton = vscode.window.createStatusBarItem(
+                vscode.StatusBarAlignment.Right,
+                102
+            );
+            this.SelectClientsButton.text = "$(checklist) Select Clients";
+            this.SelectClientsButton.tooltip = "Choose which clients to execute scripts on";
+            this.SelectClientsButton.command = "luaWebSocket.selectClients";
+            this.SelectClientsButton.show();
+            ctx.subscriptions.push(this.SelectClientsButton);
+        }
+
         if (!this.ExecuteButton) {
             this.ExecuteButton = vscode.window.createStatusBarItem(
                 vscode.StatusBarAlignment.Right,
-                100
+                101
             );
             this.ExecuteButton.text = "$(play) Execute Script";
             this.ExecuteButton.tooltip = "Execute the current script in Roblox";
@@ -231,11 +259,11 @@ class WebSocketManager {
         if (!this.ExecuteSpecificButton) {
             const config = vscode.workspace.getConfiguration('luaWebSocket');
             const specificScript = config.get('specificScriptPath', '');
-            
+
             if (specificScript) {
                 this.ExecuteSpecificButton = vscode.window.createStatusBarItem(
                     vscode.StatusBarAlignment.Right,
-                    99
+                    101
                 );
                 this.ExecuteSpecificButton.text = "$(play) Execute Loader";
                 this.ExecuteSpecificButton.tooltip = `Execute ${specificScript}`;
@@ -247,6 +275,10 @@ class WebSocketManager {
     }
 
     RemoveExecutionButtons() {
+        if (this.SelectClientsButton) {
+            this.SelectClientsButton.dispose();
+            this.SelectClientsButton = null;
+        }
         if (this.ExecuteButton) {
             this.ExecuteButton.dispose();
             this.ExecuteButton = null;
@@ -275,7 +307,13 @@ class WebSocketManager {
             }
         };
         const payload = JSON.stringify(packet);
+
         for (const [ws, identity] of this.Clients) {
+            // Skip if in 'selected' mode and this client is not selected
+            if (this.SelectionMode === 'selected' && !this.SelectedClients.has(ws._id)) {
+                continue;
+            }
+
             if (!ws || ws.readyState !== WS.OPEN) {
                 toPrune.push(ws);
                 continue;
@@ -295,22 +333,27 @@ class WebSocketManager {
         }
 
         if (sent > 0) {
-            this.LogMessage(`Script sent to ${sent} client(s) (${ScriptContent.length} chars).`, "CLIENT");
-            
+            const modeText = this.SelectionMode === 'selected' ? ` (${this.SelectedClients.size} selected)` : '';
+            this.LogMessage(`Script sent to ${sent} client(s)${modeText} (${ScriptContent.length} chars).`, "CLIENT");
+
             // Show notification if enabled in settings
             const config = vscode.workspace.getConfiguration('luaWebSocket');
             const showNotifications = config.get('showExecutionNotifications', true);
-            
+
             if (showNotifications) {
                 const scriptDisplayName = ScriptName || "Script";
                 const clientText = sent === 1 ? "Roblox Client" : "Roblox Client(s)";
-                vscode.window.showInformationMessage(`${scriptDisplayName} sent to ${clientText}.`);
+                vscode.window.showInformationMessage(`${scriptDisplayName} sent to ${sent} ${clientText}${modeText}.`);
             }
-            
+
             if (failed > 0) vscode.window.showWarningMessage(`Failed to send to ${failed} client(s).`);
             return true;
         } else {
-            vscode.window.showErrorMessage("No active Roblox clients (all sockets closed).");
+            if (this.SelectionMode === 'selected' && this.SelectedClients.size === 0) {
+                vscode.window.showErrorMessage("No clients selected. Use 'Select Clients' command to choose clients.");
+            } else {
+                vscode.window.showErrorMessage("No active Roblox clients (all sockets closed).");
+            }
             return false;
         }
     }
@@ -331,9 +374,21 @@ class WebSocketManager {
             () => this.OpenSettings()
         );
 
+        const SelectClientsCommand = vscode.commands.registerCommand(
+            'luaWebSocket.selectClients',
+            () => this.SelectClients()
+        );
+
+        const ToggleSelectionModeCommand = vscode.commands.registerCommand(
+            'luaWebSocket.toggleSelectionMode',
+            () => this.ToggleSelectionMode()
+        );
+
         Context.subscriptions.push(ExecuteScriptCommand);
         Context.subscriptions.push(ExecuteSpecificScriptCommand);
         Context.subscriptions.push(OpenSettingsCommand);
+        Context.subscriptions.push(SelectClientsCommand);
+        Context.subscriptions.push(ToggleSelectionModeCommand);
     }
 
     ExecuteCurrentScript() {
@@ -375,7 +430,7 @@ class WebSocketManager {
 
         for (const folder of workspaceFolders) {
             const fullPath = path.join(folder.uri.fsPath, specificScriptPath);
-            
+
             if (fs.existsSync(fullPath)) {
                 try {
                     scriptContent = fs.readFileSync(fullPath, 'utf8');
@@ -398,10 +453,88 @@ class WebSocketManager {
         }
 
         this.LogMessage(`Executing specific script: ${foundPath}`, 'INFO');
-        
+
         // Extract just the filename for the notification
         const fileName = path.basename(specificScriptPath, '.lua');
         this.SendScript(scriptContent, fileName);
+    }
+
+    async SelectClients() {
+        if (this.ConnectedClients === 0) {
+            vscode.window.showInformationMessage("No clients connected.");
+            return;
+        }
+
+        // Build list of client options
+        const clientOptions = [];
+        for (const [ws, identity] of this.Clients) {
+            const displayName = this.GetClientDisplayName(ws, identity);
+            clientOptions.push({
+                label: displayName,
+                description: ws._id.substring(0, 8),
+                picked: this.SelectedClients.has(ws._id),
+                clientId: ws._id
+            });
+        }
+
+        // Show multi-select quick pick
+        const selected = await vscode.window.showQuickPick(clientOptions, {
+            canPickMany: true,
+            placeHolder: 'Select which clients to execute scripts on',
+            title: 'Client Selection'
+        });
+
+        if (selected !== undefined) { // Check for undefined (cancel) vs empty array (deselect all)
+            this.SelectedClients.clear();
+            for (const item of selected) {
+                this.SelectedClients.add(item.clientId);
+            }
+
+            // Update button text to show selection count
+            if (this.SelectClientsButton) {
+                if (this.SelectedClients.size === 0) {
+                    this.SelectClientsButton.text = "$(checklist) Select Clients (None)";
+                    this.SelectClientsButton.color = "#FFA726"; // Orange warning
+                } else if (this.SelectedClients.size === this.ConnectedClients) {
+                    this.SelectClientsButton.text = "$(checklist) Select Clients (All)";
+                    this.SelectClientsButton.color = undefined; // Default color
+                } else {
+                    this.SelectClientsButton.text = `$(checklist) Select Clients (${this.SelectedClients.size}/${this.ConnectedClients})`;
+                    this.SelectClientsButton.color = "#4CAF50"; // Green
+                }
+            }
+
+            if (this.SelectedClients.size > 0) {
+                this.SelectionMode = 'selected';
+                vscode.window.showInformationMessage(`${this.SelectedClients.size} client(s) selected.`);
+                this.LogMessage(`Selected ${this.SelectedClients.size} client(s) for script execution`, 'INFO');
+            } else {
+                this.SelectionMode = 'selected'; // Keep in selected mode but with 0 clients
+                vscode.window.showWarningMessage("No clients selected. Scripts will not be sent until you select clients.");
+                this.LogMessage("No clients selected - scripts will not execute", 'WARN');
+            }
+        }
+    }
+
+    ToggleSelectionMode() {
+        if (this.ConnectedClients === 0) {
+            vscode.window.showInformationMessage("No clients connected.");
+            return;
+        }
+
+        if (this.SelectionMode === 'all') {
+            if (this.SelectedClients.size === 0) {
+                vscode.window.showInformationMessage("Please use 'Select Clients' command first to choose specific clients.");
+                vscode.commands.executeCommand('luaWebSocket.selectClients');
+                return;
+            }
+            this.SelectionMode = 'selected';
+            vscode.window.showInformationMessage(`Switched to selected mode (${this.SelectedClients.size} clients).`);
+        } else {
+            this.SelectionMode = 'all';
+            vscode.window.showInformationMessage(`Switched to all clients mode (${this.ConnectedClients} clients).`);
+        }
+        this.LogMessage(`Selection mode: ${this.SelectionMode}`, 'INFO');
     }
 
     OpenSettings() {
